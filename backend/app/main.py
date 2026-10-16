@@ -23,7 +23,18 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sess
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 FRONTEND_DIR = BASE_DIR / "frontend"
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'backend' / 'data' / 'alumniconnect.db'}")
+
+def normalize_database_url(url: str) -> str:
+    """Select the installed Psycopg 3 driver for PostgreSQL URLs."""
+    if url.startswith("postgres://"):
+        return "postgresql+psycopg://" + url.removeprefix("postgres://")
+    if url.startswith("postgresql://"):
+        return "postgresql+psycopg://" + url.removeprefix("postgresql://")
+    return url
+
+DATABASE_URL = normalize_database_url(
+    os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'backend' / 'data' / 'alumniconnect.db'}")
+)
 # Normalize deployment aliases before applying security-sensitive configuration.
 _RAW_APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
 _ENV_ALIASES = {

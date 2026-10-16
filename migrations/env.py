@@ -9,7 +9,7 @@ from sqlalchemy import engine_from_config, pool
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from backend.app.main import Base  # noqa: E402
+from backend.app.main import Base, normalize_database_url  # noqa: E402
 
 config = context.config
 if config.config_file_name is not None:
@@ -18,6 +18,7 @@ if config.config_file_name is not None:
 url = os.getenv("DATABASE_URL")
 if not url:
     url = f"sqlite:///{ROOT / 'backend' / 'data' / 'alumniconnect.db'}"
+url = normalize_database_url(url)
 config.set_main_option("sqlalchemy.url", url.replace("%", "%%"))
 target_metadata = Base.metadata
 

@@ -41,6 +41,12 @@ A full-stack alumni networking application upgraded from the supplied demo. It u
 
 Stop it with `docker compose down`. Data persists in the `alumni_pgdata` volume. **Destructive reset:** `docker compose down -v` removes the database volume and all stored data.
 
+## Deploy to Render
+
+The root `render.yaml` Blueprint creates the Docker web service, PostgreSQL database, and private Redis-compatible Key Value instance. Push the repository to GitHub, then in Render choose **New > Blueprint** and select the repository. The Blueprint generates `JWT_SECRET` and wires the database and Redis connection URLs automatically. To bootstrap the first administrator, set both `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the web service's environment settings.
+
+This Blueprint uses Render's free plans to make initial deployment straightforward. Free web services can sleep when idle, free Key Value data is not persistent, and free PostgreSQL databases expire after their current free-retention period; use paid plans and backups for durable production data. The sentence-transformer model may also require more memory than a free web instance provides; if model loading fails, recommendations fall back to lexical similarity. The `/api/health/ready` endpoint checks the database and shared rate-limit store.
+
 ## Option B — Use your own PostgreSQL server
 
 Create a database and dedicated user using your PostgreSQL administrator account, for example:

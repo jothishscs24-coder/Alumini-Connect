@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: alumniconnect-web
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health/ready
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: alumniconnect-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RATE_LIMIT_REDIS_URL
+        fromService:
+          type: keyvalue
+          name: alumniconnect-redis
+          property: connectionString
+      - key: ENABLE_LEGACY_DEMO_STATE
+        value: "false"
+      - key: ENABLE_API_DOCS
+        value: "false"
+      - key: ACCESS_TOKEN_MINUTES
+        value: "60"
+      - key: EMBEDDING_MODEL
+        value: sentence-transformers/all-MiniLM-L6-v2
+
+  - type: keyvalue
+    name: alumniconnect-redis
+    plan: free
+    ipAllowList: []
+
+databases:
+  - name: alumniconnect-db
+    plan: free
+    databaseName: alumniconnect
+    user: alumni_app
+    postgresMajorVersion: "16"

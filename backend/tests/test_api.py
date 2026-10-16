@@ -10,7 +10,7 @@ os.environ["APP_ENV"] = "test"
 os.environ["ENABLE_LEGACY_DEMO_STATE"] = "true"
 
 from fastapi.testclient import TestClient  # noqa: E402
-from backend.app.main import (AppState, SessionLocal, engine, User, Profile, Connection, MentorshipRequest, Post, PostReaction, PostComment, Message, Notification, app, seed_state, _password_hash)  # noqa: E402
+from backend.app.main import (AppState, SessionLocal, engine, User, Profile, Connection, MentorshipRequest, Post, PostReaction, PostComment, Message, Notification, app, seed_state, _password_hash, normalize_database_url)  # noqa: E402
 import pytest
 
 @pytest.fixture(scope="session", autouse=True)
@@ -54,6 +54,12 @@ def verify_alumni(user_id):
 def test_health_and_readiness(client):
     assert client.get('/api/health').json()['status'] == 'ok'
     assert client.get('/api/health/ready').json()['database'] == 'connected'
+
+def test_postgres_urls_use_psycopg3_driver():
+    assert normalize_database_url('postgresql://user:pass@host/db') == 'postgresql+psycopg://user:pass@host/db'
+    assert normalize_database_url('postgres://user:pass@host/db') == 'postgresql+psycopg://user:pass@host/db'
+    assert normalize_database_url('postgresql+psycopg://user:pass@host/db') == 'postgresql+psycopg://user:pass@host/db'
+    assert normalize_database_url('sqlite:///test.db') == 'sqlite:///test.db'
 
 def test_homepage_and_demo_page(client):
     assert 'AlumniConnect' in client.get('/').text
