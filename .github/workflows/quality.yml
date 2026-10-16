@@ -1,0 +1,124 @@
+name: AlumniConnect Quality Gates
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: test
+      JWT_SECRET: ci-test-secret-not-for-deployment-2026
+      DATABASE_URL: sqlite:///./ci-test.db
+      ENABLE_LEGACY_DEMO_STATE: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - name: Install dependencies
+        run: python -m pip install -r backend/requirements-dev.txt
+      - name: Run regression and security tests
+        run: python -m pytest -q backend/tests
+      - name: Compile Python
+        run: python -m compileall -q backend migrations
+      - name: Verify migration metadata
+        run: |
+          DATABASE_URL=sqlite:////tmp/alumniconnect-ci-migrations.db alembic upgrade head
+          DATABASE_URL=sqlite:////tmp/alumniconnect-ci-migrations.db alembic check
+      - name: Check frontend JavaScript syntax
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          for html_file in (Path('frontend/index.html'), Path('frontend/demo.html')):
+              scripts = re.findall(r'<script(?:\s[^>]*)?>(.*?)</script\s*>', html_file.read_text(), re.I | re.S)
+              for index, script in enumerate(scripts):
+                  if script.strip():
+                      Path(f'/tmp/{html_file.stem}_{index}.js').write_text(script)
+          PY
+          node --check /tmp/index_0.js
+          node --check /tmp/demo_0.js
+
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependency auditor
+        run: python -m pip install pip-audit
+      - name: Audit Python dependencies
+        run: pip-audit -r backend/requirements.txt
+
+  browser-e2e:
+    runs-on: ubuntu-latest
+    env:
+      RUN_BROWSER_E2E: "1"
+      APP_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install test dependencies
+        run: python -m pip install -r backend/requirements-dev.txt
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Run real-browser workflow and XSS regression
+        run: python -m pytest -q backend/tests/test_browser_e2e.py
+
+  postgres-redis-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: alumniconnect
+          POSTGRES_USER: alumni_app
+          POSTGRES_PASSWORD: ci-integration-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U alumni_app -d alumniconnect"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      APP_ENV: staging
+      JWT_SECRET: ci-integration-secret-2026-random-diverse-only
+      DATABASE_URL: postgresql+psycopg://alumni_app:ci-integration-password@localhost:5432/alumniconnect
+      RATE_LIMIT_REDIS_URL: redis://localhost:6379/0
+      RUN_SERVICE_INTEGRATION: "1"
+      ENABLE_API_DOCS: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - name: Install dependencies
+        run: python -m pip install -r backend/requirements-dev.txt
+      - name: Apply production migrations to PostgreSQL
+        run: alembic upgrade head
+      - name: Verify PostgreSQL, Redis, registration, and shared rate limiting
+        run: python -m pytest -q backend/tests/test_service_integration.py

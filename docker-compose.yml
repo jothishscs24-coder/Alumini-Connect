@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: alumniconnect
+      POSTGRES_USER: alumni_app
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - alumni_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alumni_app -d alumniconnect"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - alumni_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  app:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://alumni_app:${POSTGRES_PASSWORD}@db:5432/alumniconnect
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      APP_ENV: ${APP_ENV:-production}
+      ENABLE_LEGACY_DEMO_STATE: ${ENABLE_LEGACY_DEMO_STATE:-false}
+      ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-60}
+      RATE_LIMIT_REDIS_URL: ${RATE_LIMIT_REDIS_URL:-redis://redis:6379/0}
+      ENABLE_API_DOCS: ${ENABLE_API_DOCS:-false}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  alumni_pgdata:
+  alumni_redisdata:
