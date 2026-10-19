@@ -20,7 +20,7 @@ Date: 2026-10-20
 - Synthetic recommendation evaluation at K=3: passed the configured NDCG threshold (macro NDCG@3 0.8882, MRR@3 1.0, Recall@3 1.0).
 - Runtime health/readiness: local app and SQLite reported healthy.
 - `pip-audit -r backend/requirements.txt`: no known vulnerabilities found.
-- Git whitespace/diff validation: passed. Remote push status will be recorded after release execution.
+- Git whitespace/diff validation: passed. Skills-and-interests matching commit `e1b49c3` is pushed to GitHub `main` and matches the verified remote head.
 
 ## Not validated in this local environment
 
