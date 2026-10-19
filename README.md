@@ -1,13 +1,13 @@
 # AlumniConnect — Smart Alumni Networking Platform
 
-A full-stack alumni networking application upgraded from the supplied demo. It uses a single-page web UI, FastAPI REST API, SQLAlchemy data models, PostgreSQL persistence, JWT authentication, role-based access, and transparent student-to-alumni matching based only on skills and field of interest.
+A full-stack alumni networking application upgraded from the supplied demo. It uses a single-page web UI, FastAPI REST API, SQLAlchemy data models, PostgreSQL persistence, JWT authentication, role-based access, and explainable student-to-alumni matching based on skills, interests, career fit, and department context.
 
 ## What is implemented
 
 - Student/alumni registration and login; administrator accounts are bootstrapped only from environment variables.
 - Password hashing with PBKDF2-HMAC-SHA256 and expiring signed JWT access tokens.
 - Profile creation/editing and authenticated directory search/filtering.
-- Recommendations compare shared skills and field-of-interest terms only. Skills and interests contribute equally when both are present; profile names, department, company, job title, career goal, and bio do not affect match scores.
+- Recommendations use a hybrid score: fuzzy skill fit (50%), TF-IDF interest similarity (30%), career-goal-to-job-title fit (15%), and department context (5%). Missing student fields are omitted and remaining weights are renormalized. Names, company, graduation year, and bio do not affect scores.
 - Connection requests and accept/decline workflows.
 - Student-to-alumni mentorship requests and accept/decline workflows.
 - Community posts with persistent helpful/bookmark reactions and comments, connection-only private messaging, read state, and notifications.
@@ -130,7 +130,7 @@ pip install -r backend/requirements-dev.txt
 python -m pytest -q backend/tests
 ```
 
-The automated API suite uses a disposable SQLite database so it does not require PostgreSQL, Redis, or a model download. It checks registration/login, profile editing, skills-and-interests-only recommendation ranking, directory search and pagination, networking permissions, community reactions/comments, notifications, admin actions, and messaging access. To run the real-browser flow, install Chromium with Playwright and set `RUN_BROWSER_E2E=1`; CI runs it automatically. CI also runs a separate PostgreSQL/Redis integration job that migrates PostgreSQL and checks the shared Redis rate limiter.
+The automated API suite uses a disposable SQLite database so it does not require PostgreSQL, Redis, or a model download. It checks registration/login, profile editing, fuzzy skill and TF-IDF recommendation ranking, directory search and pagination, networking permissions, community reactions/comments, notifications, admin actions, and messaging access. To run the real-browser flow, install Chromium with Playwright and set `RUN_BROWSER_E2E=1`; CI runs it automatically. CI also runs a separate PostgreSQL/Redis integration job that migrates PostgreSQL and checks the shared Redis rate limiter.
 
 ### Recommendation quality evaluation
 

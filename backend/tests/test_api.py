@@ -90,45 +90,42 @@ def test_profile_update_and_recommendations(client):
     headers = auth(student['access_token'])
     response = client.put('/api/profiles/me', headers=headers, json={'full_name':'Sam Student','department':'AI & Data Science','graduation_year':2027,'company':'','job_title':'','skills':['Python','SQL'],'interests':'AI applications','career_goal':'Software Engineer','bio':'Looking for guidance'})
     assert response.status_code == 200
-    assert response.json()['matching_method'] == 'skills_and_interests'
+    assert response.json()['matching_method'] == 'fuzzy_skills_tfidf_interests_career_department'
     recs = client.get('/api/recommendations', headers=headers)
     assert recs.status_code == 200 and len(recs.json()) == 1
     assert recs.json()[0]['full_name'] == 'Alex Alumni'
     assert isinstance(recs.json()[0]['match_score'], int)
 
-def test_recommendations_compare_only_skills_and_interests(client):
+def test_recommendations_fuzzy_match_skills_and_tfidf_career_interest(client):
     student = register(
         client, 'sam@example.com', name='Sam Student',
-        department='Computer Science', career_goal='Unrelated career',
-        skills=['Python', 'SQL'], interests='machine learning recommendation systems',
-        bio='Interests and professional profile should not affect ranking.',
+        department='Computer Science & Engineering', career_goal='Data Scientist',
+        skills=['Python SQL Machine Learning Statistics'], interests='Data science and machine learning',
     )
     matching = register(
-        client, 'target@example.com', role='alumni', name='Target Mentor',
-        department='Fine Arts', company='Other Company', job_title='Unrelated role',
-        career_goal='', skills=['python', 'SQL'],
-        interests='machine learning and recommendation systems', bio='Different bio.',
+        client, 'target@example.com', role='alumni', name='Arjun Menon',
+        department='Computer Science & Engineering', company='Analytics Co', job_title='Data Scientist',
+        skills=['python', 'SQL', 'Machine Learning', 'Statistics'],
+        interests='Predictive analytics, data science, and machine learning',
     )
-    same_department_only = register(
-        client, 'alternative@example.com', role='alumni', name='Alternative Mentor',
-        department='Computer Science', company='Unrelated career', job_title='Unrelated career',
-        skills=['Rust'], interests='literature and music',
+    unrelated = register(
+        client, 'alternative@example.com', role='alumni', name='Unrelated Mentor',
+        department='Computer Science & Engineering', job_title='Frontend Developer',
+        skills=['React', 'CSS'], interests='User interface design and web design',
     )
     verify_alumni(matching['user']['id'])
-    verify_alumni(same_department_only['user']['id'])
+    verify_alumni(unrelated['user']['id'])
 
     response = client.get('/api/recommendations', headers=auth(student['access_token']))
 
     assert response.status_code == 200
     ranked = response.json()
-    assert [item['full_name'] for item in ranked] == ['Target Mentor', 'Alternative Mentor']
-    assert ranked[0]['match_score'] == 100
-    assert ranked[0]['reasons'] == [
-        'Shared skills: python, sql',
-        'Shared interests: learning, machine, recommendation, systems',
-    ]
-    assert ranked[1]['match_score'] == 0
-    assert ranked[1]['reasons'] == ['No shared skills or interests found']
+    assert [item['full_name'] for item in ranked] == ['Arjun Menon', 'Unrelated Mentor']
+    assert ranked[0]['match_score'] >= 80
+    assert any(reason.startswith('Skill fit:') for reason in ranked[0]['reasons'])
+    assert any(reason.startswith('Related interests:') for reason in ranked[0]['reasons'])
+    assert any(reason.startswith('Career fit for Data Scientist:') for reason in ranked[0]['reasons'])
+    assert ranked[1]['match_score'] < 50
     assert all(item['embedding_used'] is False for item in ranked)
 
 def test_directory_requires_auth_and_supports_search(client):

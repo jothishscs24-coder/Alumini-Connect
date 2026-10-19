@@ -293,33 +293,116 @@ def _fallback_similarity(a: str, b: str) -> float:
     wb = {w for w in re.findall(r"[a-z0-9+#.]+", b.lower()) if len(w) > 1 and w not in stop}
     return len(wa & wb) / len(wa | wb) if wa and wb else 0.0
 
-def _interest_terms(value: str) -> set[str]:
+_MATCH_WEIGHTS = {"skills": 0.50, "interests": 0.30, "career": 0.15, "department": 0.05}
+_SKILL_ALIASES = {"ml": "machine learning", "ai": "artificial intelligence", "nlp": "natural language processing"}
+
+def _normalise_skill(value: str) -> str:
+    normalised = " ".join(value.lower().replace("&", " and ").split())
+    return _SKILL_ALIASES.get(normalised, normalised)
+
+def _expand_skills(skills: list[str] | None, vocabulary: set[str]) -> list[str]:
     import re
-    stop = {"the", "and", "for", "with", "from", "into", "that", "this", "are", "you", "your", "can", "help"}
-    return {word for word in re.findall(r"[a-z0-9+#.]+", (value or "").lower()) if len(word) > 1 and word not in stop}
+    raw = [_normalise_skill(skill) for skill in (skills or []) if skill and skill.strip()]
+    if len(raw) != 1:
+        return list(dict.fromkeys(raw))
+    if raw[0] in vocabulary:
+        return raw
+    # Older/UI-created profiles may contain "Python SQL Machine Learning" as one entry.
+    matches = [skill for skill in vocabulary
+               if re.search(r"(?<![a-z0-9])" + re.escape(skill) + r"(?![a-z0-9])", raw[0])]
+    return sorted(matches) if len(matches) > 1 else raw
 
-def _skills_interest_match(student: Profile, alumnus: Profile) -> tuple[float, list[str]]:
-    """Score only the student's skills and interests against an alumnus's same fields."""
-    student_skills = {" ".join(skill.lower().split()) for skill in (student.skills or []) if skill.strip()}
-    alumni_skills = {" ".join(skill.lower().split()) for skill in (alumnus.skills or []) if skill.strip()}
-    shared_skills = sorted(student_skills & alumni_skills)
-    components = []
-    reasons = []
-    if student_skills:
-        components.append(len(shared_skills) / len(student_skills))
-    if shared_skills:
-        reasons.append("Shared skills: " + ", ".join(shared_skills[:4]))
+def _fuzzy_text_similarity(left: str, right: str) -> float:
+    from difflib import SequenceMatcher
+    import re
+    left = " ".join((left or "").lower().split())
+    right = " ".join((right or "").lower().split())
+    if not left or not right:
+        return 0.0
+    sequence_score = SequenceMatcher(None, left, right).ratio()
+    left_words = set(re.findall(r"[a-z0-9+#.]+", left))
+    right_words = set(re.findall(r"[a-z0-9+#.]+", right))
+    token_score = len(left_words & right_words) / len(left_words | right_words) if left_words | right_words else 0.0
+    return max(sequence_score, token_score)
 
-    student_interests = _interest_terms(student.interests)
-    alumni_interests = _interest_terms(alumnus.interests)
-    shared_interests = sorted(student_interests & alumni_interests)
-    if student_interests:
-        components.append(len(shared_interests) / len(student_interests | alumni_interests)
-                          if alumni_interests else 0.0)
-    if shared_interests:
-        reasons.append("Shared interests: " + ", ".join(shared_interests[:4]))
+def _tfidf_similarities(query: str, candidates: list[str]) -> list[float]:
+    """Blend word and character TF-IDF so related phrases and word variants match."""
+    if not query.strip() or not candidates:
+        return [0.0] * len(candidates)
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
 
-    return (sum(components) / len(components) if components else 0.0), reasons
+    documents = [query, *(candidate or "" for candidate in candidates)]
+    try:
+        word_matrix = TfidfVectorizer(ngram_range=(1, 2), stop_words="english").fit_transform(documents)
+        word_scores = cosine_similarity(word_matrix[0:1], word_matrix[1:]).ravel()
+    except ValueError:  # empty vocabulary, for example when the profile contains only stop words
+        word_scores = [0.0] * len(candidates)
+    try:
+        char_matrix = TfidfVectorizer(analyzer="char_wb", ngram_range=(2, 5), sublinear_tf=True).fit_transform(documents)
+        char_scores = cosine_similarity(char_matrix[0:1], char_matrix[1:]).ravel()
+    except ValueError:
+        char_scores = [0.0] * len(candidates)
+    return [float(0.7 * word + 0.3 * char) for word, char in zip(word_scores, char_scores)]
+
+def _recommendation_scores(student: Profile, alumni: list[Profile]) -> list[tuple[float, list[str]]]:
+    """Rank alumni using fuzzy skills, TF-IDF interests/career fit, and department context."""
+    alumni_vocabulary = {_normalise_skill(skill) for profile in alumni
+                          for skill in (profile.skills or []) if skill and skill.strip()}
+    student_skills = _expand_skills(student.skills, alumni_vocabulary)
+    alumni_skills = [_expand_skills(profile.skills, alumni_vocabulary) for profile in alumni]
+    interest_scores = _tfidf_similarities(student.interests or "", [profile.interests or "" for profile in alumni])
+    career_query = student.career_goal or ""
+    career_docs = [profile.job_title or profile.interests or "" for profile in alumni]
+    career_scores = _tfidf_similarities(career_query, career_docs)
+
+    results = []
+    for index, profile in enumerate(alumni):
+        candidate_skills = alumni_skills[index]
+        pairs = sorted(
+            ((_fuzzy_text_similarity(student_skill, alumni_skill), student_skill, alumni_skill)
+             for student_skill in student_skills for alumni_skill in candidate_skills), reverse=True
+        )
+        matched_student: set[str] = set()
+        matched_alumni: set[str] = set()
+        skill_matches = []
+        for similarity, student_skill, alumni_skill in pairs:
+            if similarity < 0.72 or student_skill in matched_student or alumni_skill in matched_alumni:
+                continue
+            matched_student.add(student_skill)
+            matched_alumni.add(alumni_skill)
+            skill_matches.append((student_skill, alumni_skill, similarity))
+        skill_score = sum(item[2] for item in skill_matches) / len(student_skills) if student_skills else 0.0
+        department_score = _fuzzy_text_similarity(student.department or "", profile.department or "")
+
+        dimensions = []
+        if student_skills:
+            dimensions.append(("skills", skill_score))
+        if (student.interests or "").strip():
+            dimensions.append(("interests", interest_scores[index]))
+        if career_query.strip():
+            dimensions.append(("career", career_scores[index]))
+        if (student.department or "").strip():
+            dimensions.append(("department", department_score))
+        total_weight = sum(_MATCH_WEIGHTS[name] for name, _ in dimensions)
+        score = sum(_MATCH_WEIGHTS[name] * value for name, value in dimensions) / total_weight if total_weight else 0.0
+
+        reasons = []
+        if skill_matches:
+            reasons.append("Skill fit: " + ", ".join(
+                student_skill if student_skill == alumni_skill else f"{student_skill} ↔ {alumni_skill}"
+                for student_skill, alumni_skill, _ in skill_matches[:4]
+            ))
+        if interest_scores[index] >= 0.08:
+            reasons.append(f"Related interests: {round(interest_scores[index] * 100)}% text similarity")
+        if career_scores[index] >= 0.08:
+            reasons.append(f"Career fit for {career_query}: {round(career_scores[index] * 100)}% text similarity")
+        if department_score >= 0.72:
+            reasons.append("Related department: " + (profile.department or ""))
+        if not reasons:
+            reasons.append("No strong skill, interest, or career overlap found")
+        results.append((score, reasons))
+    return results
 
 def _password_hash(password: str) -> str:
     salt = secrets.token_bytes(16)
@@ -669,7 +752,7 @@ def update_profile(payload: ProfilePayload, user: User = Depends(current_user), 
     for key, value in payload.model_dump().items(): setattr(p, key, value)
     p.embedding = None
     db.commit(); db.refresh(p)
-    return {**_profile_dict(p), "matching_method": "skills_and_interests"}
+    return {**_profile_dict(p), "matching_method": "fuzzy_skills_tfidf_interests_career_department"}
 
 @app.get("/api/recommendations")
 def recommendations(limit: int = Query(10, ge=1, le=50), user: User = Depends(current_user), db: Session = Depends(get_db)):
@@ -683,9 +766,8 @@ def recommendations(limit: int = Query(10, ge=1, le=50), user: User = Depends(cu
         ).order_by(Profile.updated_at.desc()).limit(500)
     ).all()
     results = []
-    for candidate, account in rows:
-        score, reasons = _skills_interest_match(mine, candidate)
-        if not reasons: reasons.append("No shared skills or interests found")
+    match_details = _recommendation_scores(mine, [candidate for candidate, _ in rows])
+    for (candidate, account), (score, reasons) in zip(rows, match_details):
         results.append({**_profile_dict(candidate), "role": account.role, "is_verified": account.is_verified,
                         "match_score": round(score * 100), "reasons": reasons, "embedding_used": False})
     return sorted(results, key=lambda item: (item["match_score"], item["is_verified"]), reverse=True)[:limit]
