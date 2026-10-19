@@ -94,6 +94,26 @@ def test_profile_update_and_recommendations(client):
     assert recs.json()[0]['full_name'] == 'Alex Alumni'
     assert isinstance(recs.json()[0]['match_score'], int)
 
+def test_semantic_recommendations_persist_vectors_and_rank_matches(client, monkeypatch):
+    import backend.app.main as main
+    monkeypatch.setattr(main, '_embed', lambda text: [1.0, 0.0] if ('Sam Student' in text or 'Target Mentor' in text) else [0.0, 1.0])
+    student = register(client, 'sam@example.com', name='Sam Student')
+    target = register(client, 'target@example.com', role='alumni', name='Target Mentor')
+    alternative = register(client, 'alternative@example.com', role='alumni', name='Alternative Mentor')
+    verify_alumni(target['user']['id'])
+    verify_alumni(alternative['user']['id'])
+
+    response = client.get('/api/recommendations', headers=auth(student['access_token']))
+
+    assert response.status_code == 200
+    ranked = response.json()
+    assert [item['full_name'] for item in ranked] == ['Target Mentor', 'Alternative Mentor']
+    assert all(item['embedding_used'] for item in ranked)
+    with SessionLocal() as db:
+        assert db.get(Profile, student['user']['id']).embedding == [1.0, 0.0]
+        assert db.get(Profile, target['user']['id']).embedding == [1.0, 0.0]
+        assert db.get(Profile, alternative['user']['id']).embedding == [0.0, 1.0]
+
 def test_directory_requires_auth_and_supports_search(client):
     alumni = register(client, 'a@example.com', role='alumni', name='Alex Mentor')
     verify_alumni(alumni['user']['id'])

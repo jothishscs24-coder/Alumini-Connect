@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "description": "Synthetic, hand-labeled alumni discovery cases. No real user data is included.",
+  "queries": [
+    {
+      "id": "backend-career",
+      "profile": "A student learning Python and API design who wants to build reliable backend services and distributed systems.",
+      "relevance": {
+        "backend-platform": 3,
+        "cloud-engineering": 1,
+        "product-marketing": 0,
+        "visual-design": 0
+      },
+      "candidates": [
+        {"id": "backend-platform", "profile": "Alumnus mentoring engineers in Python APIs, backend architecture, reliable distributed systems, and service scalability."},
+        {"id": "cloud-engineering", "profile": "Alumna building cloud infrastructure and dependable platform services; mentors on deployment and system reliability."},
+        {"id": "product-marketing", "profile": "Alumnus leading customer campaigns, market research, product launches, and brand positioning."},
+        {"id": "visual-design", "profile": "Alumna designing visual identities, accessible interfaces, typography systems, and creative portfolios."}
+      ]
+    },
+    {
+      "id": "data-career",
+      "profile": "A student enjoys statistics and SQL and hopes to turn messy information into useful forecasts and evidence for decisions.",
+      "relevance": {
+        "applied-data-science": 3,
+        "business-intelligence": 2,
+        "backend-platform": 0,
+        "visual-design": 0
+      },
+      "candidates": [
+        {"id": "applied-data-science", "profile": "Alumna uses machine learning, statistical analysis, and predictive models to find patterns and guide decisions."},
+        {"id": "business-intelligence", "profile": "Alumnus helps teams interpret business data with SQL, dashboards, analytics, and measurable reporting."},
+        {"id": "backend-platform", "profile": "Alumnus mentors engineers in Python APIs, backend architecture, reliable distributed systems, and service scalability."},
+        {"id": "visual-design", "profile": "Alumna designing visual identities, accessible interfaces, typography systems, and creative portfolios."}
+      ]
+    },
+    {
+      "id": "product-career",
+      "profile": "A student wants to understand customer problems, test ideas with users, and guide a digital product from concept to launch.",
+      "relevance": {
+        "product-strategy": 3,
+        "user-research": 2,
+        "backend-platform": 0,
+        "visual-design": 1
+      },
+      "candidates": [
+        {"id": "product-strategy", "profile": "Alumnus leads product strategy by discovering customer needs, prioritizing experiments, and shipping software products."},
+        {"id": "user-research", "profile": "Alumna studies how people use digital tools, runs user interviews, and tests product concepts before launch."},
+        {"id": "backend-platform", "profile": "Alumnus mentors engineers in Python APIs, backend architecture, reliable distributed systems, and service scalability."},
+        {"id": "visual-design", "profile": "Alumna designs accessible digital interfaces and prototypes, and evaluates visual concepts with users."}
+      ]
+    },
+    {
+      "id": "career-mentoring",
+      "profile": "A student is preparing for technical interviews and wants guidance on explaining projects, choosing roles, and planning a first software career.",
+      "relevance": {
+        "career-mentor": 3,
+        "backend-platform": 1,
+        "product-marketing": 0,
+        "visual-design": 0
+      },
+      "candidates": [
+        {"id": "career-mentor", "profile": "Alumna mentors graduates through job searches, interview preparation, career decisions, and early professional development."},
+        {"id": "backend-platform", "profile": "Alumnus mentors engineers in Python APIs, backend architecture, reliable distributed systems, and service scalability."},
+        {"id": "product-marketing", "profile": "Alumnus leading customer campaigns, market research, product launches, and brand positioning."},
+        {"id": "visual-design", "profile": "Alumna designing visual identities, accessible interfaces, typography systems, and creative portfolios."}
+      ]
+    }
+  ]
+}

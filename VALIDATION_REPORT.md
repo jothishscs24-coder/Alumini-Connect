@@ -22,6 +22,7 @@ The `postgres-redis-integration` job starts PostgreSQL 16 and Redis 7 services, 
 - Docker Compose image build/start and PostgreSQL/Redis service integration; Docker and Redis are unavailable here.
 - CI dependency-audit findings.
 - Real sentence-transformer model inference and recommendation ranking quality.
+- The new synthetic-corpus lexical baseline is covered in local tests; the configured model evaluation is an opt-in CI workflow and has not yet been run.
 - Existing pre-Alembic database migration/baselining against a real prior schema.
 - Account email verification and password recovery are intentionally deferred by project decision and are not implemented.
 - Monitoring, audit trail, privacy/retention controls, backup restoration, and incident response.
@@ -30,7 +31,7 @@ The `postgres-redis-integration` job starts PostgreSQL 16 and Redis 7 services, 
 
 1. Run the PostgreSQL/Redis integration job and fix any failures; run Docker Compose in a Docker-capable environment.
 2. Decide whether to implement account verification and password recovery or explicitly accept operating without these intentionally deferred workflows.
-3. Evaluate real model quality with a controlled representative dataset.
+3. Run the opt-in semantic evaluation and evaluate ranking quality with a controlled representative dataset.
 4. Review dependency audit results and finish operational/privacy controls.
 5. Back up and intentionally baseline any existing unversioned database after schema comparison.
 

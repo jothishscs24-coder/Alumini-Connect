@@ -124,6 +124,10 @@ python -m pytest -q backend/tests
 
 The automated API suite uses a disposable SQLite database so it does not require PostgreSQL, Redis, or a model download. It checks registration/login, profile editing, directory search and pagination, networking permissions, community reactions/comments, notifications, admin actions, and messaging access. To run the real-browser flow, install Chromium with Playwright and set `RUN_BROWSER_E2E=1`; CI runs it automatically. CI also runs a separate PostgreSQL/Redis integration job that migrates PostgreSQL and checks the shared Redis rate limiter. The embedding model itself is exercised only when it is installed and available; API tests deliberately allow the lexical fallback.
 
+### Recommendation quality evaluation
+
+Run the deterministic synthetic-corpus baseline with `python -m backend.evaluation.recommender_eval --mode lexical --k 3`. It reports macro Recall@K, MRR@K, and graded NDCG@K; CI enforces a broad lexical-baseline floor and uploads the JSON report. To require the configured sentence-transformer and score its actual embeddings, run `python -m backend.evaluation.recommender_eval --mode semantic --k 3`; the command fails if the model cannot produce every vector. GitHub Actions can run this model evaluation manually with the `run_semantic_evaluation` input enabled. The included labels and profiles are synthetic smoke data, not a substitute for evaluation on representative, consented profiles before production claims.
+
 ## Security and production notes
 
 - Public registration permits only `student` and `alumni`; admin accounts are bootstrapped out-of-band.
