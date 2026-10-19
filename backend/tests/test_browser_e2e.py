@@ -8,6 +8,7 @@ import urllib.error
 import urllib.request
 import uuid
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -101,6 +102,23 @@ def test_browser_registration_and_malicious_chat_name_are_safe(live_app):
         page.locator(".layout").wait_for(timeout=15000)
         assert not page_errors, f"Uncaught browser errors: {page_errors}"
         page.get_by_text("Build meaningful connections for your next career step.").wait_for(timeout=10000)
+        page.get_by_role("button", name="Discover alumni").click()
+        page.locator("#directoryQuery").fill("Browser")
+        page.locator("#directoryDepartment").fill("AI & Data Science")
+        page.locator("#directorySkill").fill("Python")
+        with page.expect_response(
+            lambda response: response.url.startswith(live_app + "/api/profiles?")
+            and response.request.method == "GET"
+        ) as directory_response:
+            page.locator("#directoryForm button").click()
+        directory_result = directory_response.value
+        assert directory_result.status == 200, directory_result.text()
+        filters = parse_qs(urlparse(directory_result.url).query)
+        assert filters.get("q") == ["Browser"]
+        assert filters.get("department") == ["AI & Data Science"]
+        assert filters.get("skill") == ["Python"]
+        page.get_by_text("No matching profiles. Try another search.").wait_for(timeout=10000)
+        assert not page_errors, f"Directory search caused browser errors: {page_errors}"
         page.get_by_role("button", name="Messages").click()
         page.get_by_text("Accept a connection request to start messaging.").wait_for(timeout=10000)
 

@@ -22,6 +22,16 @@ A full-stack alumni networking application upgraded from the supplied demo. It u
 - PostgreSQL 14+ for the intended deployment, or Docker Desktop to run the bundled PostgreSQL service.
 - Internet access on the first recommendation request if the sentence-transformer model is not already cached. The model is downloaded by `sentence-transformers` on first use. If model loading fails, the API falls back to transparent lexical similarity instead of failing the request and retries loading after a 60-second cooldown. Monitor logs/model availability to know whether true embedding-based matching is active.
 
+## Local matching showcase
+
+To populate a development SQLite database with synthetic profiles for a student-to-alumni matching demo, start the app locally and run:
+
+```powershell
+python -m backend.seed_demo
+```
+
+The command is explicit and repeatable; the app never seeds these accounts on startup. It refuses `APP_ENV=staging` or `production` and refuses non-SQLite `DATABASE_URL` values. All names, workplaces, and profiles are fabricated. Sign in as `demo.student@example.com` with `DemoStudent!2026`, then open **AI recommendations**. The four alumni accounts use `DemoAlumni!2026` and addresses under `demo.alumni.*@example.com`. These credentials are for local showcase data only and must never be reused in a deployment.
+
 ## Option A — Run with Docker Compose (recommended)
 
 1. Install Docker Desktop and start it.
@@ -136,7 +146,7 @@ Run the deterministic synthetic-corpus baseline with `python -m backend.evaluati
 - Use HTTPS, strong secrets, PostgreSQL backups, monitoring, and a managed process/container runtime for deployment.
 - High-risk API routes have Redis-backed shared rate limiting in staging/production and a process-local fallback only in development/tests. Redis availability is required at deployment startup.
 - Production responses include a CSP with `script-src 'self'`; the main app's JavaScript is served externally and has no inline event handlers. Inline styles remain allowed. The prototype page is disabled in production.
-- Account email verification and password recovery are intentionally deferred and are not implemented. Before production launch, decide whether to scope these workflows or explicitly accept operating without them; also add audit logging, operational monitoring, and privacy/data-retention policies. This repo is a functional application baseline, not a security audit or a guarantee of production compliance.
+- Account email verification and password recovery are intentionally deferred by project decision and are not implemented. They are outside this finalized local showcase scope; production launch still requires an explicit product/security decision plus audit logging, operational monitoring, and privacy/data-retention policies. This repo is a functional application baseline, not a security audit or a guarantee of production compliance.
 
 
 ## Security audit and remediation status

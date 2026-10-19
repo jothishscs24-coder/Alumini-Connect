@@ -1,40 +1,33 @@
-# Validation Report — AlumniConnect Remediation
+# Validation Report — AlumniConnect Finalization
 
-Date: 2026-10-16
+Date: 2026-10-20
 
-## Local results
+## Finalized local showcase scope
 
-- API and security regression suite: **57 passed**.
-- Chromium browser workflow: **1 passed**. It exercises registration, messaging with a hostile profile name, community post publishing, and inert rendering of a hostile comment.
-- Python compilation: passed (`python -m compileall -q backend migrations`).
-- JavaScript syntax: passed for `frontend/app.js` and the development prototype script.
-- Production CSP assertions: passed; the main page loads an external script and has no inline scripts or event-handler attributes. The production CSP includes `script-src 'self'` and the prototype HTML routes return 404.
-- Alembic SQLite upgrade, `alembic check`, and downgrade: passed.
-- API migration regression (upgrade to head and downgrade to base): passed.
-- GitHub Actions and Docker Compose YAML parsed successfully.
+- The app supports student/alumni registration, profiles, directory search, AI recommendations with lexical fallback, connection and mentorship workflows, community interactions, messaging, notifications, and administrator controls.
+- The local matching demo has one synthetic student and four synthetic verified alumni. `python -m backend.seed_demo` creates or refreshes these records only when explicitly invoked against a development/test SQLite database; it does not run at startup and refuses production/staging or non-SQLite targets.
+- Account email verification and password recovery remain intentionally deferred by project decision.
 
-## Added CI service integration
+## Local validation
 
-The `postgres-redis-integration` job starts PostgreSQL 16 and Redis 7 services, applies all Alembic migrations to PostgreSQL, then checks readiness, registration/profile persistence, and the Redis-backed login limit. The job is configured but has not run from this local Windows environment.
+- API/security and demo-seed regression suite: **71 passed, 2 skipped** on the final tree; skips are environment-dependent browser and PostgreSQL/Redis integration coverage.
+- Demo seeder: four tests cover repeatability, exact sample population, and production/staging/PostgreSQL safeguards.
+- Chromium browser workflow: **1 passed**; covers registration, hostile profile-name rendering, comment rendering, and directory query submission.
+- Python compilation and frontend JavaScript syntax checks: passed before final documentation edits.
+- SQLite Alembic upgrade, metadata check, and downgrade: passed; no unmodeled schema operations were detected.
+- Synthetic lexical recommendation evaluation at K=3: passed the configured NDCG threshold (macro NDCG@3 0.8882, MRR@3 1.0, Recall@3 1.0).
+- Runtime health/readiness: local app and SQLite reported healthy.
+- `pip-audit -r backend/requirements.txt`: no known vulnerabilities found.
+- Git whitespace/diff validation: passed. Remote push status will be recorded after release execution.
 
-## Not validated locally
+## Not validated in this local environment
 
-- Docker Compose image build/start and PostgreSQL/Redis service integration; Docker and Redis are unavailable here.
-- CI dependency-audit findings.
-- Real sentence-transformer model inference and recommendation ranking quality.
-- The new synthetic-corpus lexical baseline is covered in local tests; the configured model evaluation is an opt-in CI workflow and has not yet been run.
-- Existing pre-Alembic database migration/baselining against a real prior schema.
-- Account email verification and password recovery are intentionally deferred by project decision and are not implemented.
-- Monitoring, audit trail, privacy/retention controls, backup restoration, and incident response.
-
-## Remaining release gates
-
-1. Run the PostgreSQL/Redis integration job and fix any failures; run Docker Compose in a Docker-capable environment.
-2. Decide whether to implement account verification and password recovery or explicitly accept operating without these intentionally deferred workflows.
-3. Run the opt-in semantic evaluation and evaluate ranking quality with a controlled representative dataset.
-4. Review dependency audit results and finish operational/privacy controls.
-5. Back up and intentionally baseline any existing unversioned database after schema comparison.
+- Docker Compose image/build and PostgreSQL/Redis integration; Docker and Redis services are unavailable here.
+- Real sentence-transformer inference and semantic ranking. The model-backed dependency installation did not complete in the available local runtime; the lexical fallback and its quality baseline are validated.
+- Existing pre-Alembic database baselining against a real prior production schema.
+- Email verification and password recovery; these workflows are intentionally deferred.
+- Operational monitoring, audit trail, privacy/retention controls, backup restoration, and incident response.
 
 ## Release verdict
 
-**Not ready for public deployment yet.** Local API, browser, migration, and CSP checks pass, but the environment-dependent deployment and operational gates above remain.
+**Ready for local project demonstration; not cleared for public production deployment.** PostgreSQL/Redis, Docker, semantic model inference, and operational/privacy release gates remain environment- or product-dependent. The demo credentials are synthetic and local-only.

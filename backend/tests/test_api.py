@@ -1,5 +1,6 @@
 """API regression and workflow tests using an isolated SQLite database."""
 import os
+import re
 import tempfile
 from pathlib import Path
 
@@ -63,7 +64,7 @@ def test_postgres_urls_use_psycopg3_driver():
 
 def test_homepage_and_demo_page(client):
     assert 'AlumniConnect' in client.get('/').text
-    assert '<script src="/assets/app.js" defer></script>' in client.get('/').text
+    assert re.search(r'<script src="/assets/app\.js(?:\?[^\"]*)?" defer></script>', client.get('/').text)
     assert client.get('/assets/app.js').status_code == 200
     assert 'backendStatus' in client.get('/demo').text
 
@@ -462,7 +463,7 @@ def test_production_csp_serves_external_app_script_and_hides_demo(client, monkey
     assert "script-src 'self'" in csp
     assert "object-src 'none'" in csp
     assert "frame-ancestors 'none'" in csp
-    assert '<script src="/assets/app.js" defer></script>' in home.text
+    assert re.search(r'<script src="/assets/app\.js(?:\?[^\"]*)?" defer></script>', home.text)
     assert '<script>' not in home.text and 'onclick=' not in home.text
     script = client.get('/assets/app.js')
     assert script.status_code == 200 and "document.addEventListener('click'" in script.text
