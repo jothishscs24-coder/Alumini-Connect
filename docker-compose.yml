@@ -38,7 +38,6 @@ services:
       ENABLE_API_DOCS: ${ENABLE_API_DOCS:-false}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
     ports:
       - "8000:8000"
     depends_on:

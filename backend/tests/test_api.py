@@ -90,30 +90,46 @@ def test_profile_update_and_recommendations(client):
     headers = auth(student['access_token'])
     response = client.put('/api/profiles/me', headers=headers, json={'full_name':'Sam Student','department':'AI & Data Science','graduation_year':2027,'company':'','job_title':'','skills':['Python','SQL'],'interests':'AI applications','career_goal':'Software Engineer','bio':'Looking for guidance'})
     assert response.status_code == 200
+    assert response.json()['matching_method'] == 'skills_and_interests'
     recs = client.get('/api/recommendations', headers=headers)
     assert recs.status_code == 200 and len(recs.json()) == 1
     assert recs.json()[0]['full_name'] == 'Alex Alumni'
     assert isinstance(recs.json()[0]['match_score'], int)
 
-def test_semantic_recommendations_persist_vectors_and_rank_matches(client, monkeypatch):
-    import backend.app.main as main
-    monkeypatch.setattr(main, '_embed', lambda text: [1.0, 0.0] if ('Sam Student' in text or 'Target Mentor' in text) else [0.0, 1.0])
-    student = register(client, 'sam@example.com', name='Sam Student')
-    target = register(client, 'target@example.com', role='alumni', name='Target Mentor')
-    alternative = register(client, 'alternative@example.com', role='alumni', name='Alternative Mentor')
-    verify_alumni(target['user']['id'])
-    verify_alumni(alternative['user']['id'])
+def test_recommendations_compare_only_skills_and_interests(client):
+    student = register(
+        client, 'sam@example.com', name='Sam Student',
+        department='Computer Science', career_goal='Unrelated career',
+        skills=['Python', 'SQL'], interests='machine learning recommendation systems',
+        bio='Interests and professional profile should not affect ranking.',
+    )
+    matching = register(
+        client, 'target@example.com', role='alumni', name='Target Mentor',
+        department='Fine Arts', company='Other Company', job_title='Unrelated role',
+        career_goal='', skills=['python', 'SQL'],
+        interests='machine learning and recommendation systems', bio='Different bio.',
+    )
+    same_department_only = register(
+        client, 'alternative@example.com', role='alumni', name='Alternative Mentor',
+        department='Computer Science', company='Unrelated career', job_title='Unrelated career',
+        skills=['Rust'], interests='literature and music',
+    )
+    verify_alumni(matching['user']['id'])
+    verify_alumni(same_department_only['user']['id'])
 
     response = client.get('/api/recommendations', headers=auth(student['access_token']))
 
     assert response.status_code == 200
     ranked = response.json()
     assert [item['full_name'] for item in ranked] == ['Target Mentor', 'Alternative Mentor']
-    assert all(item['embedding_used'] for item in ranked)
-    with SessionLocal() as db:
-        assert db.get(Profile, student['user']['id']).embedding == [1.0, 0.0]
-        assert db.get(Profile, target['user']['id']).embedding == [1.0, 0.0]
-        assert db.get(Profile, alternative['user']['id']).embedding == [0.0, 1.0]
+    assert ranked[0]['match_score'] == 100
+    assert ranked[0]['reasons'] == [
+        'Shared skills: python, sql',
+        'Shared interests: learning, machine, recommendation, systems',
+    ]
+    assert ranked[1]['match_score'] == 0
+    assert ranked[1]['reasons'] == ['No shared skills or interests found']
+    assert all(item['embedding_used'] is False for item in ranked)
 
 def test_directory_requires_auth_and_supports_search(client):
     alumni = register(client, 'a@example.com', role='alumni', name='Alex Mentor')

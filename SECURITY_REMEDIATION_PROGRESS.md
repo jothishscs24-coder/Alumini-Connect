@@ -16,4 +16,4 @@ Last updated: 2026-10-20
 
 ## Final validation and limitations
 
-See [`VALIDATION_REPORT.md`](VALIDATION_REPORT.md) for the validation matrix and local environment limits. PostgreSQL/Redis service integration, Docker deployment, model-backed semantic inference, and operational/privacy controls still require external validation. Account verification and recovery emails are intentionally deferred. Do not treat this local demo validation as production security certification.
+See [`VALIDATION_REPORT.md`](VALIDATION_REPORT.md) for the validation matrix and local environment limits. PostgreSQL/Redis service integration, Docker deployment, and operational/privacy controls still require external validation. Account verification and recovery emails are intentionally deferred. Do not treat this local demo validation as production security certification.

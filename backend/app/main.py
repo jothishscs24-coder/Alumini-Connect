@@ -293,6 +293,34 @@ def _fallback_similarity(a: str, b: str) -> float:
     wb = {w for w in re.findall(r"[a-z0-9+#.]+", b.lower()) if len(w) > 1 and w not in stop}
     return len(wa & wb) / len(wa | wb) if wa and wb else 0.0
 
+def _interest_terms(value: str) -> set[str]:
+    import re
+    stop = {"the", "and", "for", "with", "from", "into", "that", "this", "are", "you", "your", "can", "help"}
+    return {word for word in re.findall(r"[a-z0-9+#.]+", (value or "").lower()) if len(word) > 1 and word not in stop}
+
+def _skills_interest_match(student: Profile, alumnus: Profile) -> tuple[float, list[str]]:
+    """Score only the student's skills and interests against an alumnus's same fields."""
+    student_skills = {" ".join(skill.lower().split()) for skill in (student.skills or []) if skill.strip()}
+    alumni_skills = {" ".join(skill.lower().split()) for skill in (alumnus.skills or []) if skill.strip()}
+    shared_skills = sorted(student_skills & alumni_skills)
+    components = []
+    reasons = []
+    if student_skills:
+        components.append(len(shared_skills) / len(student_skills))
+    if shared_skills:
+        reasons.append("Shared skills: " + ", ".join(shared_skills[:4]))
+
+    student_interests = _interest_terms(student.interests)
+    alumni_interests = _interest_terms(alumnus.interests)
+    shared_interests = sorted(student_interests & alumni_interests)
+    if student_interests:
+        components.append(len(shared_interests) / len(student_interests | alumni_interests)
+                          if alumni_interests else 0.0)
+    if shared_interests:
+        reasons.append("Shared interests: " + ", ".join(shared_interests[:4]))
+
+    return (sum(components) / len(components) if components else 0.0), reasons
+
 def _password_hash(password: str) -> str:
     salt = secrets.token_bytes(16)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt, 310000)
@@ -431,7 +459,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="AlumniConnect API",
-    description="Alumni networking, mentorship, messaging and semantic recommendations API.",
+    description="Alumni networking, mentorship, messaging, and skills-and-interests recommendations API.",
     version="1.0.0", lifespan=lifespan,
     docs_url="/docs" if ENABLE_API_DOCS else None,
     redoc_url="/redoc" if ENABLE_API_DOCS else None,
@@ -639,16 +667,15 @@ def get_profile(profile_user_id: int, user: User = Depends(current_user), db: Se
 def update_profile(payload: ProfilePayload, user: User = Depends(current_user), db: Session = Depends(get_db)):
     p = db.get(Profile, user.id)
     for key, value in payload.model_dump().items(): setattr(p, key, value)
-    p.embedding = _embed(_profile_text(p))
+    p.embedding = None
     db.commit(); db.refresh(p)
-    return {**_profile_dict(p), "embedding_status": "ready" if p.embedding else "pending_model_or_fallback"}
+    return {**_profile_dict(p), "matching_method": "skills_and_interests"}
 
 @app.get("/api/recommendations")
 def recommendations(limit: int = Query(10, ge=1, le=50), user: User = Depends(current_user), db: Session = Depends(get_db)):
     _ensure_network_eligible(user)
     mine = db.get(Profile, user.id)
     if not mine: raise HTTPException(status_code=404, detail="Complete your profile first")
-    if not mine.embedding: mine.embedding = _embed(_profile_text(mine))
     rows = db.execute(
         select(Profile, User).join(User, User.id == Profile.user_id).where(
             User.id != user.id, User.is_active.is_(True),
@@ -657,18 +684,10 @@ def recommendations(limit: int = Query(10, ge=1, le=50), user: User = Depends(cu
     ).all()
     results = []
     for candidate, account in rows:
-        if not candidate.embedding: candidate.embedding = _embed(_profile_text(candidate))
-        if mine.embedding and candidate.embedding: score = max(0.0, min(1.0, _cosine(mine.embedding, candidate.embedding)))
-        else: score = _fallback_similarity(_profile_text(mine), _profile_text(candidate))
-        common = sorted(set(s.lower() for s in (mine.skills or [])) & set(s.lower() for s in (candidate.skills or [])))
-        reasons = []
-        if common: reasons.append("Shared skills: " + ", ".join(common[:4]))
-        if mine.department and mine.department.lower() == candidate.department.lower(): reasons.append("Same academic department")
-        if mine.career_goal and (mine.career_goal.lower() in _profile_text(candidate).lower() or candidate.job_title.lower() in mine.career_goal.lower()): reasons.append("Career goal aligns with their experience")
-        if not reasons: reasons.append("Your interests and professional profile have semantic similarities")
+        score, reasons = _skills_interest_match(mine, candidate)
+        if not reasons: reasons.append("No shared skills or interests found")
         results.append({**_profile_dict(candidate), "role": account.role, "is_verified": account.is_verified,
-                        "match_score": round(score * 100), "reasons": reasons, "embedding_used": bool(mine.embedding and candidate.embedding)})
-    db.commit()
+                        "match_score": round(score * 100), "reasons": reasons, "embedding_used": False})
     return sorted(results, key=lambda item: (item["match_score"], item["is_verified"]), reverse=True)[:limit]
 
 @app.post("/api/connections", status_code=201)

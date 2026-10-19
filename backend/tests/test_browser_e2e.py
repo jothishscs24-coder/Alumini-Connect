@@ -102,6 +102,10 @@ def test_browser_registration_and_malicious_chat_name_are_safe(live_app):
         page.locator(".layout").wait_for(timeout=15000)
         assert not page_errors, f"Uncaught browser errors: {page_errors}"
         page.get_by_text("Build meaningful connections for your next career step.").wait_for(timeout=10000)
+        page.get_by_role("button", name="Recommendations").click()
+        page.get_by_role("heading", name="Recommendations").wait_for(timeout=10000)
+        page.get_by_text("Matches are based only on shared skills and field of interest.").wait_for(timeout=10000)
+        page.get_by_text("Skills + interests", exact=True).wait_for(timeout=10000)
         page.get_by_role("button", name="Discover alumni").click()
         page.locator("#directoryQuery").fill("Browser")
         page.locator("#directoryDepartment").fill("AI & Data Science")

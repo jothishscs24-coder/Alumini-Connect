@@ -1,13 +1,13 @@
 # AlumniConnect — Smart Alumni Networking Platform
 
-A full-stack alumni networking application upgraded from the supplied demo. It uses a single-page web UI, FastAPI REST API, SQLAlchemy data models, PostgreSQL persistence, JWT authentication, role-based access, and semantic profile recommendations powered by sentence-transformer embeddings.
+A full-stack alumni networking application upgraded from the supplied demo. It uses a single-page web UI, FastAPI REST API, SQLAlchemy data models, PostgreSQL persistence, JWT authentication, role-based access, and transparent student-to-alumni matching based only on skills and field of interest.
 
 ## What is implemented
 
 - Student/alumni registration and login; administrator accounts are bootstrapped only from environment variables.
 - Password hashing with PBKDF2-HMAC-SHA256 and expiring signed JWT access tokens.
 - Profile creation/editing and authenticated directory search/filtering.
-- Semantic recommendations based on profile embeddings, with shared-skill/career/department explanations. The default embedding model is `sentence-transformers/all-MiniLM-L6-v2`.
+- Recommendations compare shared skills and field-of-interest terms only. Skills and interests contribute equally when both are present; profile names, department, company, job title, career goal, and bio do not affect match scores.
 - Connection requests and accept/decline workflows.
 - Student-to-alumni mentorship requests and accept/decline workflows.
 - Community posts with persistent helpful/bookmark reactions and comments, connection-only private messaging, read state, and notifications.
@@ -20,7 +20,6 @@ A full-stack alumni networking application upgraded from the supplied demo. It u
 
 - Python 3.11 or newer (Docker uses Python 3.12).
 - PostgreSQL 14+ for the intended deployment, or Docker Desktop to run the bundled PostgreSQL service.
-- Internet access on the first recommendation request if the sentence-transformer model is not already cached. The model is downloaded by `sentence-transformers` on first use. If model loading fails, the API falls back to transparent lexical similarity instead of failing the request and retries loading after a 60-second cooldown. Monitor logs/model availability to know whether true embedding-based matching is active.
 
 ## Local matching showcase
 
@@ -55,7 +54,7 @@ Stop it with `docker compose down`. Data persists in the `alumni_pgdata` volume.
 
 The root `render.yaml` Blueprint creates the Docker web service, PostgreSQL database, and private Redis-compatible Key Value instance. Push the repository to GitHub, then in Render choose **New > Blueprint** and select the repository. The Blueprint generates `JWT_SECRET` and wires the database and Redis connection URLs automatically. To bootstrap the first administrator, set both `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the web service's environment settings.
 
-This Blueprint uses Render's free plans to make initial deployment straightforward. Free web services can sleep when idle, free Key Value data is not persistent, and free PostgreSQL databases expire after their current free-retention period; use paid plans and backups for durable production data. The sentence-transformer model may also require more memory than a free web instance provides; if model loading fails, recommendations fall back to lexical similarity. The `/api/health/ready` endpoint checks the database and shared rate-limit store.
+This Blueprint uses Render's free plans to make initial deployment straightforward. Free web services can sleep when idle, free Key Value data is not persistent, and free PostgreSQL databases expire after their current free-retention period; use paid plans and backups for durable production data. The `/api/health/ready` endpoint checks the database and shared rate-limit store.
 
 ## Option B — Use your own PostgreSQL server
 
@@ -73,7 +72,6 @@ Set these environment variables in your shell before starting the app (adjust th
 DATABASE_URL=postgresql+psycopg://alumni_app:replace_with_a_strong_password@localhost:5432/alumniconnect
 JWT_SECRET=replace_with_a_random_secret_of_at_least_32_characters
 ACCESS_TOKEN_MINUTES=60
-EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 ```
 
 For the first administrator, also set `ADMIN_EMAIL` and `ADMIN_PASSWORD`. For staging/production, configure `RATE_LIMIT_REDIS_URL` to a reachable shared Redis instance; startup fails closed without it. Production Docker startup runs `alembic upgrade head` before Uvicorn. Local development/test can still create tables automatically. Back up your database before applying migrations. For a database created by an earlier version without `alembic_version`, do not run the initial migration blindly: back it up, compare its schema with the initial migration, and intentionally baseline it with `alembic stamp head` only after verifying that all expected tables and columns already exist.
@@ -132,11 +130,11 @@ pip install -r backend/requirements-dev.txt
 python -m pytest -q backend/tests
 ```
 
-The automated API suite uses a disposable SQLite database so it does not require PostgreSQL, Redis, or a model download. It checks registration/login, profile editing, directory search and pagination, networking permissions, community reactions/comments, notifications, admin actions, and messaging access. To run the real-browser flow, install Chromium with Playwright and set `RUN_BROWSER_E2E=1`; CI runs it automatically. CI also runs a separate PostgreSQL/Redis integration job that migrates PostgreSQL and checks the shared Redis rate limiter. The embedding model itself is exercised only when it is installed and available; API tests deliberately allow the lexical fallback.
+The automated API suite uses a disposable SQLite database so it does not require PostgreSQL, Redis, or a model download. It checks registration/login, profile editing, skills-and-interests-only recommendation ranking, directory search and pagination, networking permissions, community reactions/comments, notifications, admin actions, and messaging access. To run the real-browser flow, install Chromium with Playwright and set `RUN_BROWSER_E2E=1`; CI runs it automatically. CI also runs a separate PostgreSQL/Redis integration job that migrates PostgreSQL and checks the shared Redis rate limiter.
 
 ### Recommendation quality evaluation
 
-Run the deterministic synthetic-corpus baseline with `python -m backend.evaluation.recommender_eval --mode lexical --k 3`. It reports macro Recall@K, MRR@K, and graded NDCG@K; CI enforces a broad lexical-baseline floor and uploads the JSON report. To require the configured sentence-transformer and score its actual embeddings, run `python -m backend.evaluation.recommender_eval --mode semantic --k 3`; the command fails if the model cannot produce every vector. GitHub Actions can run this model evaluation manually with the `run_semantic_evaluation` input enabled. The included labels and profiles are synthetic smoke data, not a substitute for evaluation on representative, consented profiles before production claims.
+Run the deterministic synthetic-corpus evaluation with `python -m backend.evaluation.recommender_eval --mode lexical --k 3`. It reports macro Recall@K, MRR@K, and graded NDCG@K; CI enforces a broad baseline floor and uploads the JSON report. The API regression tests separately verify the live skills-and-interests scoring rule. The included labels and profiles are synthetic smoke data, not a substitute for evaluation on representative, consented profiles before production claims.
 
 ## Security and production notes
 
@@ -156,4 +154,4 @@ Run the deterministic synthetic-corpus baseline with `python -m backend.evaluati
 - [`SECURITY_REMEDIATION_PROGRESS.md`](SECURITY_REMEDIATION_PROGRESS.md): fixes completed and release blockers still open.
 - [`VALIDATION_REPORT.md`](VALIDATION_REPORT.md): latest reproducible local test results and environment limitations.
 
-**Do not deploy publicly yet.** Run and review the new PostgreSQL/Redis CI job and browser CI, validate model ranking quality, decide whether to implement the intentionally deferred account email workflows or accept their absence, and complete operational controls before launch.
+**Do not deploy publicly yet.** Run and review the new PostgreSQL/Redis CI job and browser CI, decide whether to implement the intentionally deferred account email workflows or accept their absence, and complete operational controls before launch.

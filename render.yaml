@@ -26,8 +26,6 @@ services:
         value: "false"
       - key: ACCESS_TOKEN_MINUTES
         value: "60"
-      - key: EMBEDDING_MODEL
-        value: sentence-transformers/all-MiniLM-L6-v2
 
   - type: keyvalue
     name: alumniconnect-redis
