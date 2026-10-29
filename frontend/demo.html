@@ -129,17 +129,94 @@ function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&l
 function toast(msg){$("toastHost").innerHTML='<div class="toast">'+esc(msg)+'</div>';setTimeout(()=>$("toastHost").innerHTML="",2600)}
 function showPage(p){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));$("page-"+p).classList.add("active");document.querySelectorAll(".nav").forEach(x=>x.classList.toggle("active",x.dataset.page===p));if(p==="discover")renderDiscover();if(p==="feed")renderFeed();if(p==="requests")renderRequests();if(p==="messages")renderMessages();if(p==="admin")renderAdmin();if(p==="dashboard")renderDashboard();if(p==="career")renderCareerMentors();if(p==="profile")loadProfileFields();window.scrollTo({top:0,behavior:"smooth"})}
 document.querySelectorAll(".nav").forEach(b=>b.addEventListener("click",()=>showPage(b.dataset.page)));
-function switchRole(){role=$("roleSelect").value;const names={student:profile.name||"Karthik",alumni:"Priya Raman",admin:"Platform Admin"};$("topAvatar").textContent=initials(names[role]);$("welcomeTitle").textContent=role==="student"?"Good evening, "+(profile.name.split(" ")[0]||"there")+".":role==="alumni"?"Welcome back, Priya.":"Platform overview";$("welcomeDesc").textContent=role==="student"?"Your next opportunity could start with a conversation.":role==="alumni"?"Share your experience. Help someone move forward.":"Monitor verification, mentorship, and community health."; $("quickAction").textContent=role==="alumni"?"＋ Create a post":role==="admin"?"Review verification":"Explore alumni";$("quickAction").onclick=quickAction; $("recTitle").textContent=role==="alumni"?"Student connections":role==="admin"?"Alumni network":"Recommended alumni";$("recSub").textContent=role==="alumni"?"Students seeking guidance in your areas":"People who align with your goals";$("requestHeading").textContent=role==="alumni"?"Incoming mentorship requests":"Mentorship requests";$("requestDesc").textContent=role==="alumni"?"Review requests and help students move forward.":"Build meaningful connections, one conversation at a time.";renderDashboard();renderRequests();renderAdmin()}
+function updateSidebarNav(){
+  const navContainer=document.querySelector(".sidebar");
+  if(!navContainer)return;
+  if(role==="alumni"){
+    const label=navContainer.querySelector('.side-label');if(label)label.textContent="Alumni Portal";
+    navContainer.querySelectorAll('.nav').forEach(btn=>{
+      const p=btn.dataset.page;
+      btn.style.display="";
+      if(p==='dashboard')btn.querySelector('.nav-text').textContent='Alumni Hub';
+      else if(p==='requests')btn.querySelector('.nav-text').textContent='Incoming Requests';
+      else if(p==='discover')btn.querySelector('.nav-text').textContent='Campus Directory';
+      else if(p==='feed')btn.querySelector('.nav-text').textContent='Share Insights';
+      else if(p==='messages')btn.querySelector('.nav-text').textContent='Mentee Messages';
+      else if(p==='career')btn.style.display='none';
+      else if(p==='profile')btn.querySelector('.nav-text').textContent='Alumni Profile';
+      else if(p==='admin')btn.style.display='none';
+    });
+    const bot=navContainer.querySelector('.sidebar-bottom');if(bot)bot.innerHTML="<b>Alumni Mentorship Portal</b><br>Guide students &amp; share industry advice.";
+  }else if(role==="admin"){
+    const label=navContainer.querySelector('.side-label');if(label)label.textContent="Operations Console";
+    navContainer.querySelectorAll('.nav').forEach(btn=>{
+      btn.style.display="";
+      const p=btn.dataset.page;
+      if(p==='dashboard')btn.querySelector('.nav-text').textContent='Operations Console';
+      else if(p==='admin')btn.querySelector('.nav-text').textContent='Verification Queue';
+      else if(p==='discover')btn.querySelector('.nav-text').textContent='User Directory';
+      else if(p==='feed')btn.querySelector('.nav-text').textContent='Community Moderation';
+      else if(p==='requests')btn.querySelector('.nav-text').textContent='Mentorship Audit';
+      else if(p==='messages')btn.style.display='none';
+      else if(p==='career')btn.style.display='none';
+      else if(p==='profile')btn.querySelector('.nav-text').textContent='Admin Settings';
+    });
+    const bot=navContainer.querySelector('.sidebar-bottom');if(bot)bot.innerHTML="<b>Administration Console</b><br>Institutional governance &amp; credential verification.";
+  }else{
+    const label=navContainer.querySelector('.side-label');if(label)label.textContent="Workspace";
+    navContainer.querySelectorAll('.nav').forEach(btn=>{
+      btn.style.display="";
+      const p=btn.dataset.page;
+      if(p==='dashboard')btn.querySelector('.nav-text').textContent='Dashboard';
+      else if(p==='discover')btn.querySelector('.nav-text').textContent='Discover alumni';
+      else if(p==='feed')btn.querySelector('.nav-text').textContent='Industry feed';
+      else if(p==='requests')btn.querySelector('.nav-text').textContent='Mentorship';
+      else if(p==='messages')btn.querySelector('.nav-text').textContent='Messages';
+      else if(p==='career')btn.querySelector('.nav-text').textContent='AI career agent';
+      else if(p==='profile')btn.querySelector('.nav-text').textContent='My profile';
+      else if(p==='admin')btn.querySelector('.nav-text').textContent='Admin console';
+    });
+    const bot=navContainer.querySelector('.sidebar-bottom');if(bot)bot.innerHTML="<b>Prototype mode</b><br><span id=\"backendStatus\">Checking backend…</span><br>Demo role switch is not authentication.";
+  }
+}
+function switchRole(){
+  role=$("roleSelect").value;
+  const names={student:profile.name||"Karthik",alumni:"Priya Raman",admin:"Platform Admin"};
+  $("topAvatar").textContent=initials(names[role]);
+  $("welcomeTitle").textContent=role==="student"?"Good evening, "+(profile.name.split(" ")[0]||"there")+".":role==="alumni"?"Welcome back, Priya 👋 · Alumni Mentor":"Platform Operations Console 🛡️";
+  $("welcomeDesc").textContent=role==="student"?"Your next opportunity could start with a conversation.":role==="alumni"?"Empower campus students, review guidance requests, and share industry insights.":"Review alumni verification queue, manage accounts, and oversee community health.";
+  $("quickAction").textContent=role==="alumni"?"＋ Share industry insight":role==="admin"?"Review verification queue":"Explore alumni";
+  $("quickAction").onclick=quickAction;
+  $("recTitle").textContent=role==="alumni"?"Incoming student mentorship requests":role==="admin"?"Alumni verification queue":"Recommended alumni";
+  $("recSub").textContent=role==="alumni"?"Students seeking guidance in your domain":role==="admin"?"Pending alumni accounts needing credential verification":"People who align with your goals";
+  $("requestHeading").textContent=role==="alumni"?"Incoming mentorship requests from students":role==="admin"?"Mentorship operations & health":"Mentorship requests";
+  $("requestDesc").textContent=role==="alumni"?"Review guidance requests and help students move forward.":role==="admin"?"Monitor mentorship engagement across departments.":"Build meaningful connections, one conversation at a time.";
+  updateSidebarNav();
+  renderDashboard();
+  renderRequests();
+  renderAdmin();
+  loadProfileFields();
+}
 $("roleSelect").addEventListener("change",switchRole);
 function quickAction(){if(role==="alumni"){openPostModal()}else if(role==="admin"){showPage("admin")}else showPage("discover")}
-function statsMarkup(items){return items.map(i=>'<div class="stat"><div class="stat-top"><span>'+i[0]+'</span><span class="stat-icon">'+i[1]+'</span></div><div class="stat-value">'+i[2]+'</div><div class="stat-note" style="color:'+ (i[4]||"var(--green)")+'">'+i[3]+'</div></div>').join("")}
+function statsMarkup(items){return items.map(i=>'<div class="stat"><div class="stat-top"><span>'+i[0]+'</span><span class="stat-icon">'+i[1]+'</span></div><div class="stat-value">'+i[2]+'</div><div class="stat-note" style="color:'+(i[4]||"var(--green)")+'">'+i[3]+'</div></div>').join("")}
 function renderDashboard(){
-let stats=role==="student"?[["Alumni matches","♧","24","Based on your profile"],["Connections","↗",requests.filter(r=>r.student===profile.name&&r.status==="accepted").length,"Accepted mentorships"],["Saved insights","▤",bookmarks.length,"Keep useful advice close"],["Career readiness","✧","68%","Demo estimate"]]:role==="alumni"?[["Mentorship requests","⇄",requests.filter(r=>r.alumniId===1&&r.status==="pending").length,"Awaiting your response"],["Students helped","♧","12","Sample activity"],["Contribution points","✦","245","Demo balance"],["Insights published","▤",posts.filter(p=>p.author==="Priya Raman").length,"Community knowledge"]]:[["Total members","♧","1,248","Sample platform data"],["Verified alumni","✓",alumni.filter(a=>a.verified||verified[a.id]).length,"Demo directory"],["Pending reviews","◷",alumni.filter(a=>!a.verified&&!verified[a.id]).length,"Verification queue"],["Mentorship requests","⇄",requests.length,"All sample requests"]];
-$("statsGrid").innerHTML=statsMarkup(stats);
-let recs=role==="alumni"?[{name:"Karthik Subramanian",role:"Student · CSE",company:"Interested in backend development",initials:"KS",match:91,skills:["Java","Python","SQL"],id:0},{name:"Ananya R",role:"Student · IT",company:"Interested in AI / ML",initials:"AR",match:87,skills:["Python","ML"],id:0}]:alumni.filter(a=>a.verified||verified[a.id]).slice(0,3);
-$("recommendedList").innerHTML=recs.map(a=>'<div class="person-row"><div class="person"><div class="avatar">'+esc(a.initials||initials(a.name))+'</div><div class="person-details"><div class="person-name">'+esc(a.name)+'</div><div class="person-meta">'+esc(a.role)+' · '+esc(a.company||"Student")+'</div><div class="chips">'+(a.skills||[]).slice(0,3).map(s=>'<span class="chip">'+esc(s)+'</span>').join("")+'</div></div></div><div style="display:grid;justify-items:end;gap:8px"><span class="match">'+a.match+'% match</span><button class="btn small soft" onclick="requestMentor('+a.id+')">'+(role==="alumni"?"View profile":"Connect")+'</button></div></div>').join("");
-$("dashboardFeed").innerHTML=posts.slice(0,2).map(postMarkup).join("");
-$("taskList").innerHTML=tasks.map((done,i)=>'<label class="task '+(done?'done':'')+'"><input type="checkbox" '+(done?'checked':'')+' onchange="toggleTask('+i+',this.checked)"><span>'+["Complete your profile","Connect with one alumnus","Save one useful industry insight"][i]+'</span></label>').join("");$("taskCount").textContent=tasks.filter(Boolean).length+"/3";$("taskProgress").style.width=(tasks.filter(Boolean).length/3*100)+"%";
+  let stats=role==="student"?[["Alumni matches","♧","24","Based on your profile"],["Connections","↗",requests.filter(r=>r.student===profile.name&&r.status==="accepted").length,"Accepted mentorships"],["Saved insights","▤",bookmarks.length,"Keep useful advice close"],["Career readiness","✧","68%","Demo estimate"]]:role==="alumni"?[["Pending student requests","⇄",requests.filter(r=>r.status==="pending").length,"Awaiting your response",requests.filter(r=>r.status==="pending").length>0?"#d97706":"var(--green)"],["Active mentees","♧",requests.filter(r=>r.status==="accepted").length,"Students currently guiding"],["Contribution points","✦","245","Alumni impact score"],["Insights published","▤",posts.filter(p=>p.author==="Priya Raman").length,"Community knowledge"]]:[["Pending verifications","◷",alumni.filter(a=>!a.verified&&!verified[a.id]).length,"Awaiting admin review",alumni.filter(a=>!a.verified&&!verified[a.id]).length>0?"#dc2626":"var(--green)"],["Verified alumni","✓",alumni.filter(a=>a.verified||verified[a.id]).length,"Active industry mentors"],["Registered members","♧","1,248","Students & alumni"],["Mentorship requests","⇄",requests.length,"Platform requests"]];
+  $("statsGrid").innerHTML=statsMarkup(stats);
+  if(role==="alumni"){
+    let pendingReqs=requests.filter(r=>r.status==="pending");
+    $("recommendedList").innerHTML=pendingReqs.length?pendingReqs.map(r=>'<div class="person-row"><div class="person"><div class="avatar">'+esc(r.studentInitials||"ST")+'</div><div class="person-details"><div class="person-name">'+esc(r.student)+'</div><div class="person-meta">Computer Science & Engineering · Class of 2025</div><div class="sub" style="margin-top:5px;background:#f8fafc;padding:6px 10px;border-radius:6px">'+esc(r.purpose)+'</div></div></div><div style="display:flex;gap:6px"><button class="btn small primary" onclick="updateRequest('+r.id+',\'accepted\')">Accept</button><button class="btn small" onclick="updateRequest('+r.id+',\'rejected\')">Decline</button></div></div>').join(""):('<div class="empty">✓ All student requests have been answered!</div>'+[{name:"Ananya R",role:"Student · CSE",company:"Target: Backend Engineer",initials:"AR",match:91,skills:["Java","Spring","SQL"],id:0},{name:"Rahul M",role:"Student · IT",company:"Target: ML Engineer",initials:"RM",match:88,skills:["Python","PyTorch"],id:0}].map(s=>'<div class="person-row"><div class="person"><div class="avatar">'+s.initials+'</div><div class="person-details"><div class="person-name">'+s.name+'</div><div class="person-meta">'+s.role+' · '+s.company+'</div><div class="chips">'+s.skills.map(sk=>'<span class="chip">'+sk+'</span>').join("")+'</div></div></div><button class="btn small soft" onclick="toast(\'Student profile preview\')">Connect</button></div>').join(""));
+  }else if(role==="admin"){
+    let pending=alumni.filter(a=>!a.verified&&!verified[a.id]);
+    $("recommendedList").innerHTML=pending.length?pending.map(a=>'<div class="person-row"><div class="person"><div class="avatar">'+a.initials+'</div><div class="person-details"><div class="person-name">'+esc(a.name)+'</div><div class="person-meta">'+esc(a.role)+' · '+esc(a.company)+' · Class of '+esc(a.grad)+'</div><div class="sub">'+esc(a.dept)+'</div></div></div><div style="display:flex;gap:5px"><button class="btn small primary" onclick="verifyAlumni('+a.id+',true)">✓ Approve</button><button class="btn small" onclick="verifyAlumni('+a.id+',false)">Reject</button></div></div>').join(""):('<div class="empty">✓ All alumni verification requests reviewed. Queue is clear!</div>');
+  }else{
+    let recs=alumni.filter(a=>a.verified||verified[a.id]).slice(0,3);
+    $("recommendedList").innerHTML=recs.map(a=>'<div class="person-row"><div class="person"><div class="avatar">'+esc(a.initials||initials(a.name))+'</div><div class="person-details"><div class="person-name">'+esc(a.name)+'</div><div class="person-meta">'+esc(a.role)+' · '+esc(a.company||"Student")+'</div><div class="chips">'+(a.skills||[]).slice(0,3).map(s=>'<span class="chip">'+esc(s)+'</span>').join("")+'</div></div></div><div style="display:grid;justify-items:end;gap:8px"><span class="match">'+a.match+'% match</span><button class="btn small soft" onclick="requestMentor('+a.id+')">Connect</button></div></div>').join("");
+  }
+  $("dashboardFeed").innerHTML=posts.slice(0,2).map(postMarkup).join("");
+  $("taskList").innerHTML=tasks.map((done,i)=>'<label class="task '+(done?'done':'')+'"><input type="checkbox" '+(done?'checked':'')+' onchange="toggleTask('+i+',this.checked)"><span>'+(role==="alumni"?["Review pending student requests","Publish one industry insight","Offer referral advice for campus placements"][i]:["Complete your profile","Connect with one alumnus","Save one useful industry insight"][i])+'</span></label>').join("");
+  $("taskCount").textContent=tasks.filter(Boolean).length+"/3";
+  $("taskProgress").style.width=(tasks.filter(Boolean).length/3*100)+"%";
 }
 function personMarkup(a,showConnect=true){return '<div class="person-row"><div class="person"><div class="avatar">'+esc(a.initials||initials(a.name))+'</div><div class="person-details"><div class="person-name">'+esc(a.name)+' '+((a.verified||verified[a.id])?'<span style="color:#16835d;font-size:11px">✓</span>':'')+'</div><div class="person-meta">'+esc(a.role)+' · '+esc(a.company)+'</div><div class="chips">'+(a.skills||[]).map(s=>'<span class="chip">'+esc(s)+'</span>').join("")+'</div><div class="sub">'+esc(a.bio||"")+'</div></div></div><div style="display:grid;justify-items:end;gap:8px"><span class="match">'+a.match+'% match</span>'+(showConnect?'<button class="btn small soft" onclick="requestMentor('+a.id+')">Request mentorship</button>':'')+'</div></div>'}
 function renderDiscover(){let q=($("alumniSearch")?.value||"").toLowerCase(),domain=$("domainFilter")?.value||"";let arr=alumni.filter(a=>(a.verified||verified[a.id])&&(!domain||a.domain===domain)&&[a.name,a.role,a.company,a.domain,...a.skills].join(" ").toLowerCase().includes(q));$("discoverList").innerHTML=arr.length?arr.map(a=>personMarkup(a)).join(""):'<div class="empty">No matching verified alumni. Try a different search.</div>'}
@@ -161,7 +238,36 @@ function askAI(q){showPage("career");$("aiInput").value=q;submitAI()}
 function submitAI(){let input=$("aiInput"),q=input.value.trim();if(!q)return;let box=$("aiChat");box.insertAdjacentHTML("beforeend",'<div class="bubble mine">'+esc(q)+'</div>');input.value="";let answer=aiAnswer(q);setTimeout(()=>{box.insertAdjacentHTML("beforeend",'<div class="bubble">'+esc(answer).replace(/\n/g,"<br>")+'</div>');box.scrollTop=box.scrollHeight},250);box.scrollTop=box.scrollHeight}
 function aiAnswer(q){let s=q.toLowerCase();if(s.includes("mentor")||s.includes("alumni")||s.includes("connect"))return "Based on this demo profile, start with Arjun Kumar for Java, backend development and DSA; Priya Raman for career planning and product thinking; or Meera Krishnan if your goal is AI/ML. These are sample matches, not live recommendations. Open Discover alumni to inspect their profiles and send a request.";if(s.includes("skill")||s.includes("gap"))return "A useful next step is to choose one target role and compare it with your current skills. For a software developer path, check: (1) one core language and OOP, (2) arrays, strings and hash maps, (3) SQL and HTTP/API fundamentals, (4) one tested project with a clear README. Prioritize gaps you can demonstrate in a project rather than collecting certificates.";if(s.includes("30-day")||s.includes("plan")||s.includes("roadmap"))return "Example 30-day plan:\nWeek 1 — Refresh Java/Python fundamentals, OOP and collections.\nWeek 2 — Practice arrays, strings, hash maps and SQL problems.\nWeek 3 — Build a small API-backed project with a database and tests.\nWeek 4 — Polish GitHub README, revise core concepts and do two mock interviews.\n\nAdjust this plan to your target job, current level and available time. This is a generic prototype plan.";if(s.includes("java")||s.includes("developer")||s.includes("backend"))return "For a Java/backend role, focus on Java fundamentals and OOP, collections, exception handling, DSA, SQL, HTTP/REST concepts, and one small backend project. Add testing and explain your design choices. Arjun Kumar is the sample alumni profile most aligned with Java and backend development. Use Discover alumni to request guidance.";if(s.includes("resume")||s.includes("project"))return "Choose one project and make the evidence clear: problem statement, your specific contribution, architecture, key implementation decisions, tests, limitations and a reproducible setup guide. Quantify outcomes only when you measured them. You can ask an alumni mentor for a review through the mentorship workflow.";return "Start by defining your target role, current skills, and a realistic weekly time budget. Then choose one skill gap, one practical project task, and one person who can give useful feedback. I can demonstrate skill-gap guidance, a learning plan, or alumni matching. This prototype uses local rule-based responses; connect a real LLM API for production AI."}
 function renderCareerMentors(){$("careerMentors").innerHTML=alumni.filter(a=>a.verified||verified[a.id]).slice(0,3).map(a=>'<div class="person-row"><div class="person"><div class="avatar">'+a.initials+'</div><div><div class="person-name">'+esc(a.name)+'</div><div class="person-meta">'+esc(a.role)+'</div></div></div><button class="btn small" onclick="requestMentor('+a.id+')">Connect</button></div>').join("")}
-function loadProfileFields(){$("profileName").value=profile.name;$("profileDept").value=profile.dept;$("profileCgpa").value=profile.cgpa;$("profileGoal").value=profile.goal;$("profileSkills").value=profile.skills;$("profileAbout").value=profile.about;$("profileBannerName").textContent=profile.name;$("profileBannerDesc").textContent=profile.dept+" · "+(role==="alumni"?"Alumni":role==="admin"?"Admin preview":"Student")}
+function loadProfileFields(){
+  if(role==="alumni"){
+    $("profileName").value="Priya Raman";
+    $("profileDept").value="Computer Science & Engineering";
+    $("profileCgpa").value="Class of 2019";
+    $("profileGoal").value="Product Manager at Zoho";
+    $("profileSkills").value="Product Strategy, SQL, Communication, Agile, Career Mentoring";
+    $("profileAbout").value="Passionate alumnus helping students understand product thinking, system design, internships, and early-career decisions. Happy to review resumes and provide placement tips.";
+    $("profileBannerName").textContent="Priya Raman";
+    $("profileBannerDesc").textContent="Product Manager · Zoho · Class of 2019 · Verified Alumnus ✓";
+  }else if(role==="admin"){
+    $("profileName").value="Platform Administrator";
+    $("profileDept").value="Institutional Operations Office";
+    $("profileCgpa").value="Operations";
+    $("profileGoal").value="Platform Governance & Alumni Relations";
+    $("profileSkills").value="Alumni Verification, Moderation, User Access Governance, Community Health";
+    $("profileAbout").value="System administrator managing AlumniConnect verification queue, platform governance, and user access.";
+    $("profileBannerName").textContent="Platform Administrator";
+    $("profileBannerDesc").textContent="Institutional Operations · System Oversight 🛡️";
+  }else{
+    $("profileName").value=profile.name;
+    $("profileDept").value=profile.dept;
+    $("profileCgpa").value=profile.cgpa;
+    $("profileGoal").value=profile.goal;
+    $("profileSkills").value=profile.skills;
+    $("profileAbout").value=profile.about;
+    $("profileBannerName").textContent=profile.name;
+    $("profileBannerDesc").textContent=profile.dept+" · Student · Class of 2025";
+  }
+}
 function saveProfile(){profile={name:$("profileName").value.trim()||"Student",dept:$("profileDept").value,cgpa:$("profileCgpa").value.trim(),goal:$("profileGoal").value.trim(),skills:$("profileSkills").value.trim(),about:$("profileAbout").value.trim()};persist();loadProfileFields();switchRole();toast("Profile saved in this browser.")}
 function renderAdmin(){if(!$("adminStats"))return;$("adminStats").innerHTML=statsMarkup([["Sample users","♧","1,248","Illustrative data"],["Verified alumni","✓",alumni.filter(a=>a.verified||verified[a.id]).length,"Demo directory"],["Pending reviews","◷",alumni.filter(a=>!a.verified&&!verified[a.id]).length,"Needs review"],["Open requests","⇄",requests.filter(r=>r.status==="pending").length,"Sample requests"]]);$("verificationList").innerHTML=alumni.filter(a=>!a.verified&&!verified[a.id]).map(a=>'<div class="request-row"><div class="person"><div class="avatar">'+a.initials+'</div><div><div class="person-name">'+esc(a.name)+'</div><div class="person-meta">'+esc(a.role)+' · '+esc(a.company)+'</div><div class="sub">'+esc(a.dept)+'</div></div></div><div style="display:flex;gap:5px"><button class="btn small primary" onclick="verifyAlumni('+a.id+',true)">Approve</button><button class="btn small" onclick="verifyAlumni('+a.id+',false)">Reject</button></div></div>').join("")||'<div class="empty">No sample profiles awaiting verification.</div>'}
 function verifyAlumni(id,ok){if(ok)verified[id]=true;else{alumni=alumni.filter(a=>a.id!==id)}persist();renderAdmin();renderDiscover();toast(ok?"Alumni marked verified in demo.":"Sample profile removed from demo queue.")}
