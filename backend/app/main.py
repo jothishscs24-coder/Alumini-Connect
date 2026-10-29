@@ -824,7 +824,20 @@ def respond_mentorship(request_id: int, payload: StatusPayload, user: User = Dep
     if not item: raise HTTPException(status_code=404, detail="Mentorship request not found")
     if item.alumni_id != user.id: raise HTTPException(status_code=403, detail="Only the requested alumni can respond")
     if item.status != "pending": raise HTTPException(status_code=409, detail="This request has already been processed")
-    item.status = payload.status; _notify(db, item.student_id, f"Your mentorship request was {payload.status}."); db.commit()
+    item.status = payload.status; _notify(db, item.student_id, f"Your mentorship request was {payload.status}.")
+    if payload.status == "accepted":
+        conn = db.scalar(select(Connection).where(
+            or_(
+                (Connection.requester_id == item.student_id) & (Connection.recipient_id == item.alumni_id),
+                (Connection.requester_id == item.alumni_id) & (Connection.recipient_id == item.student_id),
+            )
+        ))
+        if conn:
+            conn.status = "accepted"
+        else:
+            conn = Connection(requester_id=item.student_id, recipient_id=item.alumni_id, status="accepted")
+            db.add(conn)
+    db.commit()
     return {"id": item.id, "status": item.status}
 
 @app.get("/api/posts")

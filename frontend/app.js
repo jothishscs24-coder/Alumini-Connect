@@ -188,6 +188,30 @@ function card(title, body, extra = '') {
 }
 
 function personCard(p, rec = false) {
+  let actionButtons = '';
+  if (me?.role === 'student') {
+    if (p.role === 'alumni') {
+      actionButtons = `
+        <button class="btn small primary" data-mentor-id="${p.user_id}">Request Mentorship</button>
+        <button class="btn small outline" data-connect-id="${p.user_id}">Connect</button>
+      `;
+    } else {
+      actionButtons = `
+        <button class="btn small primary" data-connect-id="${p.user_id}">Connect</button>
+      `;
+    }
+  } else if (me?.role === 'alumni') {
+    if (p.role === 'alumni') {
+      actionButtons = `
+        <button class="btn small outline" data-connect-id="${p.user_id}">Connect</button>
+      `;
+    } else {
+      actionButtons = `
+        <span class="pill blue">Student Mentee</span>
+      `;
+    }
+  }
+
   return `
     <div class="personline">
       <div class="avatar">${esc(initials(p.full_name))}</div>
@@ -204,8 +228,7 @@ function personCard(p, rec = false) {
         ${rec ? `<div class="reason">${(p.reasons || []).map(esc).join(' · ')}</div>` : ''}
       </div>
       <div style="display:grid;gap:6px">
-        <button class="btn small primary" data-connect-id="${p.user_id}">Connect</button>
-        ${p.role === 'alumni' ? `<button class="btn small outline" data-mentor-id="${p.user_id}">Mentor</button>` : ''}
+        ${actionButtons}
       </div>
     </div>
   `;
@@ -373,7 +396,7 @@ async function alumniDashboard() {
         </div>
       </div>
       <div>
-        <button class="btn small primary" data-connect-id="${s.user_id}">Connect</button>
+        <span class="pill blue">Seeking Guidance</span>
       </div>
     </div>
   `).join('') : `
@@ -970,7 +993,7 @@ async function mentorship() {
 async function respondMentor(id, status) {
   try {
     await api('/mentorship/' + id, { method: 'PATCH', body: JSON.stringify({ status }) });
-    toast('Request ' + status + '.');
+    toast(status === 'accepted' ? 'Mentorship accepted! You and the student are now connected to message.' : 'Request declined.');
     await renderApp();
   } catch (e) {
     toast(e.message);
